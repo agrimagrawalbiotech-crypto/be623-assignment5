@@ -1,0 +1,188 @@
+---
+title: "BE-623 Assignment_5"
+author: "Agrim Agrawal
+        26210006
+        MTech Biological Engineering"
+
+output: pdf_document
+date: "2026-10-14"
+
+---
+URL: https://github.com/agrimagrawalbiotech-crypto/be623-assignment5
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Question 1. (1 mark)
+Build a data frame called circ_df with four columns, Sample, Gene, ZT and Expression, holding the 12 measurements in the table above. Build Sample and Gene the way bio_data was built in Lab Session 9, Step 8, then show the structure of circ_df with str().
+```{r loading packages, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r making dataframe}
+time <- paste0("ZT_", seq(0,20, by=4))
+gene1 <- c("PER2", "BMAL1")
+
+Samples_PER2 <- paste0("S", 1:6)
+Samples_BMAL1 <- paste0("S", 7:12)
+
+exp_PER2 <- c(1.8, 3.2, 6.5, 9.4, 7.1, 3.6)
+exp_BMAL1 <- c(8.6, 5.9, 2.7, 1.5, 3.4, 6.8)
+
+
+
+circ_df <- data.frame(
+  gene = c(
+    rep(gene1[1], length(Samples_PER2)),
+    rep(gene1[2], length(Samples_BMAL1))
+  ), 
+  samples = c(Samples_PER2, Samples_BMAL1),
+  time,
+  expr = c(exp_PER2, exp_BMAL1)
+)
+
+View(circ_df)
+
+
+str(circ_df)
+```
+
+Q2. (1 mark) 
+Using base R indexing only (no dplyr), store the six PER2 rows in a new data frame called per2_rows. Then report the mean, median and standard deviation of PER2 expression.
+
+```{r stats}
+per2_rows <- circ_df[circ_df$gene=="PER2",]
+
+cat("Mean of expression for per2 gene: ", mean(per2_rows$expr))
+cat("Median of expression for per2 gene: ", median(per2_rows$expr))
+cat("Std deviation of expression for per2 gene: ", sd(per2_rows$expr))
+
+```
+
+Q3. (1 mark) 
+Save circ_df as circadian_expression.csv without row numbers, read it back into circ_reloaded, and use identical() to confirm that the Expression column survived the round trip. In one sentence, say what would change in the file if you left out row.names = FALSE.
+
+```{r Q3}
+#writing it
+write.csv(circ_df, "circadian_expression.csv", row.names = FALSE)
+
+#reading it 
+circ_reloaded <- read.csv("circadian_expression.csv")
+
+identical(circ_df, circ_reloaded)
+
+```
+
+If we left out row.names =FALSE, then it would add an additional column to the csv file with the numbers 1 to 6. that would not make it identical to the original file. 
+
+
+
+Q4. (1 mark) 
+Write two dplyr pipelines, one per gene, that keep only that gene's rows and sort them from highest to lowest expression. From the top row of each, report the ZT at which PER2 and BMAL1 peak, and how many hours apart the two peaks are.
+
+```{r Q4}
+per2 <- filter(circ_df, gene=="PER2") %>% arrange(desc(expr))
+peak_per2 <- per2$time[1]
+
+
+bmal1 <- filter(circ_df, gene=="BMAL1")
+peak_bmal1 <- bmal1$time[1]
+
+cat(peak_per2)
+cat(peak_bmal1)
+
+```
+The two peaks are 12 hours apart
+
+
+Q5. (2 marks) Add a TRUE/FALSE column called dark that is TRUE for samples taken at ZT12 or later (the lights-off half of the day), and save the result as circ_df2. Then write one pipeline that reports, for the dark samples only, the mean expression of each gene and how many samples it is based on. Repeat it for the light samples. In one sentence, say which gene is higher in the dark. Hint: Practice Exercise 2 built a TRUE/FALSE column with mutate(). filter() can keep the rows you want before you group them.
+```{r Q5}
+circ_df2 <- circ_df %>%
+  mutate(dark = time %in% time[4:6])
+```
+For dark samples:
+``` {r dark samples}
+circ_df2 %>% 
+  filter(dark==TRUE) %>% 
+  group_by(gene) %>% 
+  summarize(mean_expr = mean(expr),
+            sample_size = n())
+```
+For light samples: 
+```{r light samples}
+circ_df2 %>% 
+  filter(dark==FALSE) %>% 
+  group_by(gene) %>% 
+  summarize(mean_expr = mean(expr),
+            sample_size = n())
+```
+
+PER2 gene has higher expression in the dark
+
+
+Q6. (2 marks) 
+Make a scatter plot of Expression against ZT with one colour per gene. Choose the two colours yourself, add a title and axis labels (the x-axis should read Zeitgeber time (h)), and use theme_minimal(). Save the plot to a variable called rhythm_plot and write it to rhythm_plot.png with ggsave(). In one or two sentences, describe what each gene does across the day.
+
+
+```{r Q6 scatter plot}
+# need to convert time to factor with levels to arrange in wanted order,
+# otherwise it was arranging in ascending order of values
+circ_df$time <- factor(
+  circ_df$time,
+  levels = c("ZT_0", "ZT_4", "ZT_8", "ZT_12", "ZT_16", "ZT_20")
+)
+
+rhythm_plot <- ggplot(circ_df, aes(x = time, y = expr, colour = gene)) +
+  geom_point() +
+  theme_minimal() + 
+  labs(
+    x = "Zeitgeber time (h)", 
+    y = "Expression of gene",
+    title = "Expression of gene against time (ZT)"
+  )
+
+ggsave("rhythm_plot.png")
+
+```
+The expression of PER2 gene first increases as time goes on, with its peak at ZT_12. Contrastingly, the peak of BMAL1 gene is at ZT_0, after which its expression goes down until ZT_12 after which it begings to climb up once again. 
+
+
+
+Q7. (2 marks) Make a box plot of Expression for each gene, filled by gene with the same two colours as Question 6, and save it as expression_boxplot.png. Then compare it with rhythm_plot in two or three sentences: what does the box plot suggest about the two genes, and what has it hidden that Question 6 showed?
+
+```{r Q7}
+ggplot(circ_df, aes(x = gene, y = expr, fill = gene))+
+  geom_boxplot() +
+  theme_minimal()
+
+ggsave("expression_boxplot.png")
+
+```
+
+The boxplot shows that there is not much difference in the expression of the 2 genes throughout the day; the medians lie close to each other, so do the 25th and 75th percentiles.  
+The important thing that is missing from visualizing the boxplot is that we do not know the expression of the genes at particular times; this was clearly visible in the scatter plot. 
+This means, that for overall expression visualization and comparison, the boxplot is better, but for comparing the time-dependent expression of the 2 genes, a scatter plot should be preferred. 
+
+
+
+```{bash final git add}
+git add *.png
+git commit -m "Add all plots"
+
+git add *.csv
+git commit -m "Add expression value csv file"
+
+git add *.Rmd
+git commit -m "Add completed R Markdown file" 
+
+git add assignment_5.R
+git commit -m "Complete script"
+
+git add *.pdf
+git commit -m "Add final pdf too"
+
+git push -u origin main
+```
