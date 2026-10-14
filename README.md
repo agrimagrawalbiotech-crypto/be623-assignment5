@@ -9,3 +9,6 @@ assignment_5.R is the R script used to run the pipeline required for the assignm
 circadian_expression.csv is the expression data for each of PER2 and BMAL1 genes. 
 
 There are also Boxplot and scatter plots for the expression values of these 2 genes based on ZT (Zeitegeber time in h)
+
+
+*Note: Please ignore the Assignment_5.Rmd Markdown. 
